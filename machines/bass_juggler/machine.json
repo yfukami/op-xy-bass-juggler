@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "sdk": "1.16",
+  "kind": "player",
+  "description": "Monophonic bassline from permuted rhythmic cells, with automatic rhythm juggling."
+}
