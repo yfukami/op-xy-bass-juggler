@@ -179,16 +179,32 @@
     {
       "id": "pitch",
       "label": "PITCH",
-      "default": 0.071429,
+      "default": 0.021739,
       "mapping": {
         "kind": "enum",
         "labels": [
           "ROOT",
           "OCT",
+          "188",
+          "1881",
+          "R8B7",
+          "R8R5",
           "R5",
+          "R5LO",
+          "R55",
+          "R55R",
           "R58",
+          "R585",
           "R5B7",
+          "R5B75",
+          "R535",
+          "PENT",
+          "MAJ",
           "CHRD",
+          "DN",
+          "UD",
+          "PEDL",
+          "RTONE",
           "WALK"
         ]
       },
@@ -216,16 +232,14 @@
       "display": "enum"
     },
     {
-      "id": "octave",
-      "label": "OCTAVE",
-      "default": 0.375,
+      "id": "latch",
+      "label": "LATCH",
+      "default": 0.25,
       "mapping": {
         "kind": "enum",
         "labels": [
-          "-2",
-          "-1",
-          "0",
-          "+1"
+          "OFF",
+          "ON"
         ]
       },
       "display": "enum"

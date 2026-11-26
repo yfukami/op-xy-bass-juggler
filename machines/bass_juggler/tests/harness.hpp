@@ -25,12 +25,13 @@ struct Host {
     machine::State state;
     player::Controls controls;
     Record records[8];
-    u32 held, now, stale_updates, passed_through, largest_drain;
+    u32 held, now, stale_updates, passed_through, largest_drain, ended;
+    unsigned __int128 down_keys;  // keys physically down
     int level[128];
     std::vector<Event> events;
 
     Host() : state(), controls(), records(), held(0), now(0), stale_updates(0), passed_through(0),
-             largest_drain(0), level() {}
+             largest_drain(0), ended(0), down_keys(0), level() {}
 
     // Stores a choice as the SDK does: the centre of its bucket.
     void set(u32 control, u32 index, u32 choices) {
@@ -78,18 +79,25 @@ struct Host {
         u32 i = 0;
         for (; i < 8 && machine::update(state, controls, change); ++i) {
             require(change.mode == player::Replace);
-            require(change.plan.count >= 1 && change.plan.count <= 8);  // an empty Replace would end the root for good
+            require(change.plan.count <= 8);
+            // An empty Replace ends the root for good: only for a key the player let go.
+            if (!change.plan.count) {
+                require(!(down_keys >> change.root & 1));
+                ++ended;
+            }
             store(change.root, change.plan, true);
         }
         if (i > largest_drain) largest_drain = i;
     }
     void press(u32 note, u32 velocity = 100) {
+        down_keys |= static_cast<unsigned __int128>(1) << note;
         player::Plan plan;
         if (!machine::press(state, controls, note, velocity, plan)) { ++passed_through; return; }
         if (plan.count) store(note, plan, false);
         drain();
     }
     void release(u32 note) {
+        down_keys &= ~(static_cast<unsigned __int128>(1) << note);
         if (!machine::release(state, note)) stock_release(note);
         drain();
     }
@@ -108,6 +116,8 @@ struct Host {
             ++now;
         }
     }
+    // Whether stock holds a record for this root.
+    bool has_record(u32 root) { return find(root) != nullptr; }
     void all_notes_off() {
         for (u32 i = 0; i < held; ++i) note_off(records[i]);
         held = 0;

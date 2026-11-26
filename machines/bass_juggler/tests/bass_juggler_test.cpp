@@ -17,7 +17,7 @@ static void defaults(Host& h) {
     h.set(2, 0, machine::kPerms);
     h.set(3, 0, machine::kPitches);   // ROOT
     h.set(4, 0, machine::kJuggles);   // HOLD
-    h.set(5, 1, machine::kOctaves);   // -1
+    h.set(5, 0, machine::kLatches);   // LATCH off
     h.set(6, 10, machine::kGates);    // 60%
     h.set(7, 0, machine::kSlides);    // 0%
 }
@@ -221,6 +221,32 @@ static void pattern_steps() {
     require(run(ChordTones, chord, 6) == Offsets({0, 4, 7, 11, 0, 4}));
     require(run(ChordTones, one, 3) == Offsets({0, 7, 12}));  // one key climbs root, fifth, octave
     require(run(Walk, chord, 5) == Offsets({0, 4, 7, 11, 0}));
+    require(run(RootOctaveOctave, chord, 4) == Offsets({0, 12, 12, 0}));
+    require(run(RootOctaveOctaveRoot, chord, 5) == Offsets({0, 12, 12, 0, 0}));
+    require(run(RootFifthFifth, chord, 4) == Offsets({0, 7, 7, 0}));
+    require(run(RootFifthFifthRoot, chord, 5) == Offsets({0, 7, 7, 0, 0}));
+    require(run(RootFifthOctaveFifth, chord, 5) == Offsets({0, 7, 12, 7, 0}));
+    require(run(RootFifthSeventhFifth, chord, 5) == Offsets({0, 7, 11, 7, 0}));  // the held B
+    require(run(RootFifthSeventhFifth, one, 4) == Offsets({0, 7, 10, 7}));
+    require(run(RootOctaveSeventh, chord, 5) == Offsets({0, 12, 11, 12, 0}));
+    require(run(RootOctaveSeventh, one, 4) == Offsets({0, 12, 10, 12}));
+    require(run(RootLowFifth, chord, 3) == Offsets({0, -5, 0}));
+    require(run(RootFifthThirdFifth, chord, 4) == Offsets({0, 7, 4, 7}));      // the held E
+    require(run(RootFifthThirdFifth, tones_of({48, 51}), 4) == Offsets({0, 7, 3, 7}));  // a held Eb
+    require(run(RootFifthThirdFifth, one, 4) == Offsets({0, 7, 4, 7}));        // no 3rd held: major
+    require(run(Pentatonic, one, 7) == Offsets({0, 3, 5, 7, 10, 12, 0}));
+    require(run(ChordDown, chord, 5) == Offsets({11, 7, 4, 0, 11}));
+    require(run(ChordDown, one, 4) == Offsets({12, 7, 0, 12}));
+    require(run(RootOctaveRootFifth, chord, 5) == Offsets({0, 12, 0, 7, 0}));
+    require(run(MajorPentatonic, one, 7) == Offsets({0, 2, 4, 7, 9, 12, 0}));
+    require(run(ChordUpDown, chord, 7) == Offsets({0, 4, 7, 11, 7, 4, 0}));   // the ends once
+    require(run(ChordUpDown, tones_of({48, 55}), 3) == Offsets({0, 7, 0}));   // two notes: up, down
+    require(run(ChordUpDown, one, 5) == Offsets({0, 7, 12, 7, 0}));
+    require(run(Pedal, chord, 7) == Offsets({0, 4, 0, 7, 0, 11, 0}));
+    require(run(Pedal, tones_of({48, 55}), 3) == Offsets({0, 7, 0}));
+    require(run(Pedal, one, 5) == Offsets({0, 7, 0, 12, 0}));
+    for (u32 pattern = 0; pattern < machine::kPitches; ++pattern)
+        require(machine::pattern_length(pattern, chord) <= 2 * machine::kSlots);
 }
 
 static Offsets walk_bars(const machine::Tones& t, u32 cells, u32 bars, bool reset) {
@@ -262,7 +288,6 @@ static Notes bar_pitches(u32 pattern, const Notes& keys, u32 bars) {
     Host h;
     defaults(h);
     h.set(3, pattern, machine::kPitches);
-    h.set(5, 2, machine::kOctaves);  // OCTAVE 0
     for (u32 key : keys) h.press(key);
     h.step(bars * 16 * 60);
     return h.pitches();
@@ -271,22 +296,33 @@ static Notes bar_pitches(u32 pattern, const Notes& keys, u32 bars) {
 static void plays_the_patterns() {
     using namespace machine;
     // TRES: six cells a bar, each bar starting the pattern again.
-    require(bar_pitches(RootFifthSeventh, {48, 52, 55, 59}, 2) == Notes({48, 55, 59, 60, 48, 55, 48, 55, 59, 60, 48, 55}));
-    require(bar_pitches(RootFifthSeventh, {48}, 1) == Notes({48, 55, 58, 60, 48, 55}));
-    require(bar_pitches(ChordTones, {55, 52, 48}, 1) == Notes({48, 52, 55, 48, 52, 55}));
-    require(bar_pitches(Walk, {48, 52, 55}, 2) == Notes({48, 52, 55, 48, 52, 47, 48, 52, 55, 48, 52, 47}));
-    require(bar_pitches(Octave, {40}, 1) == Notes({40, 52, 40, 52, 40, 52}));
+    // An octave below the keys.
+    require(bar_pitches(RootFifthSeventh, {48, 52, 55, 59}, 2) == Notes({36, 43, 47, 48, 36, 43, 36, 43, 47, 48, 36, 43}));
+    require(bar_pitches(RootFifthSeventh, {48}, 1) == Notes({36, 43, 46, 48, 36, 43}));
+    require(bar_pitches(ChordTones, {55, 52, 48}, 1) == Notes({36, 40, 43, 36, 40, 43}));
+    require(bar_pitches(Walk, {48, 52, 55}, 2) == Notes({36, 40, 43, 36, 40, 35, 36, 40, 43, 36, 40, 35}));
+    require(bar_pitches(Octave, {40}, 1) == Notes({28, 40, 28, 40, 28, 40}));
+    require(bar_pitches(RootFifthSeventhFifth, {48, 59}, 1) == Notes({36, 43, 47, 43, 36, 43}));
+    require(bar_pitches(RootOctaveOctaveRoot, {48}, 1) == Notes({36, 48, 48, 36, 36, 48}));
+    require(bar_pitches(RootLowFifth, {48}, 1) == Notes({36, 31, 36, 31, 36, 31}));  // the G below
+    require(bar_pitches(ChordDown, {48, 52, 55}, 1) == Notes({43, 40, 36, 43, 40, 36}));
+    // RTONE: only held notes, every one turning up, and not a fixed cycle.
+    const Notes random = bar_pitches(RandomTone, {48, 52, 55}, 40);
+    require(random.size() == 240);
+    std::set<u32> seen(random.begin(), random.end());
+    require(seen == std::set<u32>({36, 40, 43}));
+    require(Notes(random.begin(), random.begin() + 6) != Notes(random.begin() + 6, random.begin() + 12) ||
+            Notes(random.begin() + 6, random.begin() + 12) != Notes(random.begin() + 12, random.begin() + 18));
 }
 
 static void new_root_from_the_next_cell() {
     Host h;
     defaults(h);
-    h.set(5, 2, machine::kOctaves);  // OCTAVE 0
     h.press(48);
     h.step(4 * 60);  // into the second cell (steps 3..5)
     h.press(43);     // a lower key: the new root
     h.step(12 * 60);
-    require(h.pitches() == Notes({48, 48, 43, 43, 43, 43}));
+    require(h.pitches() == Notes({36, 36, 31, 31, 31, 31}));
     h.release(43);
     h.release(48);
     require(h.sounding() == 0);
@@ -297,7 +333,7 @@ static void reads_defaults() {
     defaults(h);
     const machine::Params p = machine::read_params(h.controls);
     require(p.rate == 60 && p.cells == 2 && p.perm == 0 && p.pitch == 0 && p.juggle == 0);
-    require(p.octave == -1 && p.gate == 60 && p.slide == 0);
+    require(!p.latch && p.gate == 60 && p.slide == 0);
 }
 
 static void root_an_octave_down() {
@@ -745,12 +781,12 @@ static void definition_matches_the_code() {
     std::string press;
     const std::vector<Param> params = read_definition(press);
     require(press == "page");  // two pages of four
-    const char* ids[] = {"rate", "cells", "perm", "pitch", "juggle", "octave", "gate", "slide"};
-    const char* names[] = {"RATE", "CELLS", "PERM", "PITCH", "JUGGLE", "OCTAVE", "GATE", "SLIDE"};
+    const char* ids[] = {"rate", "cells", "perm", "pitch", "juggle", "latch", "gate", "slide"};
+    const char* names[] = {"RATE", "CELLS", "PERM", "PITCH", "JUGGLE", "LATCH", "GATE", "SLIDE"};
     const u32 counts[] = {machine::kRates, machine::kCellSets, machine::kPerms, machine::kPitches,
-                          machine::kJuggles, machine::kOctaves, machine::kGates, machine::kSlides};
-    // Defaults: 1/16, TRES, 1, ROOT, HOLD, -1, 60%, 0%.
-    const u32 defaults_at[] = {R16, kTres, 0, 0, kHold, 1, 10, 0};
+                          machine::kJuggles, machine::kLatches, machine::kGates, machine::kSlides};
+    // Defaults: 1/16, TRES, 1, ROOT, HOLD, LATCH off, 60%, 0%.
+    const u32 defaults_at[] = {R16, kTres, 0, 0, kHold, 0, 10, 0};
     require(params.size() == 8);
     for (u32 i = 0; i < 8; ++i) {
         const Param& param = params[i];
@@ -768,7 +804,6 @@ static void definition_matches_the_code() {
             h.set(i, choice, counts[i]);
             std::string expected = lower(label);
             std::replace(expected.begin(), expected.end(), '-', '/');
-            if (i == 5) expected = label;  // OCTAVE: -2, -1, 0, +1
             if (i == 6 || i == 7) expected = label + "%";
             require(header_values(h)[i] == expected);
         }
@@ -776,7 +811,7 @@ static void definition_matches_the_code() {
     // The defaults as the header shows them, page 1 then page 2.
     Host h;
     defaults(h);
-    require(header_values(h) == std::vector<std::string>({"1/16", "tres", "1", "root", "hold", "-1", "60%", "0%"}));
+    require(header_values(h) == std::vector<std::string>({"1/16", "tres", "1", "root", "hold", "off", "60%", "0%"}));
 }
 
 static void perm_clamps_and_comes_back() {
@@ -819,7 +854,7 @@ static void controls_change_safely_mid_bar() {
     // Every control swept through its choices while two keys play: notes stay
     // in range and nothing hangs (each change lands at a cell or bar line).
     const u32 counts[] = {machine::kRates, machine::kCellSets, machine::kPerms, machine::kPitches,
-                          machine::kJuggles, machine::kOctaves, machine::kGates, machine::kSlides};
+                          machine::kJuggles, machine::kLatches, machine::kGates, machine::kSlides};
     for (u32 control = 0; control < 8; ++control) {
         Host h;
         defaults(h);
@@ -894,6 +929,129 @@ static void screen_shows_the_bar() {
         }
 }
 
+// ---- LATCH ----
+static Host latched() {
+    Host h;
+    defaults(h);
+    h.set(3, machine::RootFifth, machine::kPitches);
+    h.set(5, 1, machine::kLatches);
+    return h;
+}
+
+static void latch_keeps_playing() {
+    Host h = latched();
+    h.press(48);
+    h.press(55);
+    h.step(kBar / 2);
+    h.release(48);
+    h.release(55);
+    require(h.passed_through == 0 && h.has_record(48) && h.has_record(55));  // records kept
+    const size_t before = h.ons().size();
+    h.step(2 * kBar);
+    const std::vector<Event> ons = h.ons();
+    require(ons.size() == before + 12);  // two more bars of TRES, without a key down
+    for (size_t i = before; i < ons.size(); ++i) require(ons[i].pitch == 36 || ons[i].pitch == 43);
+    require(h.stale_updates == 0 && h.sounding() <= 1);
+}
+
+static void latch_new_chord_replaces() {
+    Host h = latched();
+    h.press(48);
+    h.press(55);
+    h.release(48);
+    h.release(55);
+    h.step(kBar + kBar / 4);
+    const u32 step = h.state.step;
+    // A new gesture: F, then A while F is down. C and G end; the bar goes on.
+    h.press(53);
+    require(!h.has_record(48) && !h.has_record(55) && h.ended == 2);
+    h.press(57);
+    require(h.ended == 2 && h.has_record(53) && h.has_record(57));  // A joins F, nothing else ends
+    require(h.state.step == step && h.state.juggling);  // no new phrase
+    h.release(53);
+    h.release(57);
+    const size_t before = h.ons().size();
+    h.step(kBar);
+    const std::vector<Event> ons = h.ons();
+    require(ons.size() > before);
+    for (size_t i = before; i < ons.size(); ++i) require(ons[i].pitch == 41 || ons[i].pitch == 48);  // F's r5, an octave down
+    // A latched key pressed again in a new gesture stays; the others end.
+    h.press(57);
+    require(h.has_record(57) && !h.has_record(53) && h.ended == 3);
+    h.release(57);
+    require(h.stale_updates == 0 && h.largest_drain <= 8);
+}
+
+static void latch_off_stops() {
+    Host h = latched();
+    h.press(48);
+    h.press(52);
+    h.press(55);
+    h.release(52);  // let go of one while two stay down
+    h.release(55);
+    h.step(kBar);
+    // LATCH off: the keys no longer down stop at the next drain; C plays on.
+    h.set(5, 0, machine::kLatches);
+    h.step(1);
+    require(!h.has_record(52) && !h.has_record(55) && h.has_record(48) && h.state.active == 1);
+    h.step(kBar);
+    require(h.sounding() <= 1);
+    h.release(48);  // now released as usual
+    require(h.sounding() == 0 && !h.has_record(48) && h.state.active == 0);
+    // Latched with no key down, then off: silence, and the next key is a new phrase.
+    Host g = latched();
+    g.press(48);
+    g.release(48);
+    g.step(kBar);
+    g.set(5, 0, machine::kLatches);
+    g.step(1);
+    require(g.sounding() == 0 && g.state.active == 0 && !g.has_record(48));
+    g.press(50);
+    require(g.state.step == 0 && !g.state.juggling);
+    require(g.stale_updates == 0);
+}
+
+static void latch_full_chords() {
+    // Eight keys down, then released: the first goes as usual, so seven stay
+    // latched and stock keeps a record free. Eight new keys: the seven end,
+    // and every new one gets a record.
+    Host h = latched();
+    for (u32 i = 0; i < 8; ++i) h.press(40 + i);
+    for (u32 i = 0; i < 8; ++i) h.release(40 + i);
+    require(!h.has_record(40) && h.has_record(41) && __builtin_popcount(h.state.active) == 7);
+    h.step(kBar);
+    for (u32 i = 0; i < 8; ++i) h.press(60 + i);
+    require(h.ended == 7 && h.state.active == 0xff);
+    for (u32 i = 0; i < 8; ++i) require(!h.has_record(40 + i) && h.has_record(60 + i));
+    for (u32 i = 0; i < 8; ++i) h.release(60 + i);
+    h.step(kBar);
+    require(h.stale_updates == 0 && h.largest_drain <= 8 && h.sounding() <= 1);
+    h.all_notes_off();
+    require(h.sounding() == 0 && h.state.active == 0);
+}
+
+static void latch_long_run() {
+    // Chords come and go, LATCH and SLIDE toggle: nothing sticks or goes stale.
+    Host h = latched();
+    h.set(7, 20, machine::kSlides);
+    h.set(4, kRnd1, machine::kJuggles);
+    u32 chord = 0;
+    for (u32 i = 0; i < 40000; ++i) {
+        h.step();
+        require(h.sounding() <= 2);
+        if (i % 1501 == 0) {
+            for (u32 k = 0; k < 3; ++k) h.press(40 + (chord * 5 + k * 4) % 24);
+            for (u32 k = 0; k < 3; ++k) h.release(40 + (chord * 5 + k * 4) % 24);
+            ++chord;
+        }
+        if (i % 7001 == 0) h.set(5, (i / 7001) % 2, machine::kLatches);
+    }
+    require(h.stale_updates == 0 && h.largest_drain <= 8);
+    h.set(5, 0, machine::kLatches);
+    h.step(1);
+    require(h.sounding() == 0 && h.state.active == 0);
+}
+
 int main() {
     static_assert(sizeof(machine::State) <= player::state_bytes, "State fits the SDK's area");
     permutation_tables();
@@ -927,6 +1085,11 @@ int main() {
     perm_clamps_and_comes_back();
     controls_change_safely_mid_bar();
     screen_shows_the_bar();
+    latch_keeps_playing();
+    latch_new_chord_replaces();
+    latch_off_stops();
+    latch_full_chords();
+    latch_long_run();
     lowest_key_is_the_root();
     folds_into_range();
     nine_keys_and_cleanup();

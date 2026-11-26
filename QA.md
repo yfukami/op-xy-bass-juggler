@@ -7,7 +7,7 @@ Run every check on one OP-XY (OS 1.2.1), top to bottom, in one project, on the e
 | Page 1 | Page 2 (press any encoder) |
 |---|---|
 | RATE `1/16` | JUGGLE `hold` |
-| CELLS `tres` | OCTAVE `-1` |
+| CELLS `tres` | LATCH `off` |
 | PERM `1` | GATE `60%` |
 | PITCH `root` | SLIDE `0%` |
 
@@ -31,7 +31,7 @@ The bar counts from the first key, so "bar line" means every 16 steps after it.
 ## Controls and screen
 
 10. **Page switching.** Press any encoder. Pass: the header switches pages, and all eight names and values read correctly.
-11. **Full range of every control.** Pass: one value per detent, and no value touches the next column. RATE `1/2t` to `1/32t`, CELLS `4444` to `64321`, PERM `1` to the set's count, PITCH `root` to `walk`, JUGGLE `hold` to `rnd4`, OCTAVE `-2` to `+1`, GATE `10%` to `100%`, SLIDE `0%` to `100%`.
+11. **Full range of every control.** Pass: one value per detent, and no value touches the next column. RATE `1/2t` to `1/32t`, CELLS `4444` to `64321`, PERM `1` to the set's count, PITCH `root` to `walk` (23 patterns; watch `r5b75`, `rtone`, `1881` and `r8b7`), JUGGLE `hold` to `rnd4`, LATCH `off`/`on`, GATE `10%` to `100%`, SLIDE `0%` to `100%`.
 12. **PERM clamps and comes back.** CELLS `64321`, PERM `51`. Then CELLS `5533`. Pass: PERM shows `6`. CELLS `4444`: PERM shows `1`. CELLS `64321` again: PERM shows `51`.
 13. **Screen.** Hold a key. Pass: white dots with dividers mark the cells at steps 0, 3, 6, 9, 12, 14 below the header, one tick moves across all 16 steps in order, and the text reads `1/15 hold`. The black covers hiding the other ticks are invisible.
 14. **Screen while juggling.** JUGGLE `gen1`. Pass: the text counts `1/15`, `2/15`, ... once per bar, and the blocks change at each bar line. Release the key: the text returns to `1/15 gen1`.
@@ -51,14 +51,19 @@ The bar counts from the first key, so "bar line" means every 16 steps after it.
 25. **Accents.** CELLS `5533`, PERM `2` (5-3-5-3). Pass: the two 5-step cells are clearly louder than the 3-step cells. On `tres`, only the first note of the bar is accented.
 26. **SLIDE.** Set the synth to legato or portamento. PITCH `r5`, SLIDE `100%`, hold C and G. Pass: the two short cells at the end of each `tres` bar slide into the next note. SLIDE `0%`: no slides. Hold only C at SLIDE `100%`: plays as with SLIDE `0%`.
 27. **SLIDE chance.** SLIDE `50%`, as in check 26. Pass: about half the short cells slide, varying bar to bar.
-28. **GATE and OCTAVE.** GATE `10%`: short staccato notes. GATE `100%`: each note lasts to the next with no gap or overlap. OCTAVE `+1`: the bassline sits an octave above the held keys.
+28. **GATE.** GATE `10%`: short staccato notes. GATE `100%`: each note lasts to the next with no gap or overlap.
+29. **New pitches,** with C and B held (a major 7th), CELLS `tres` (six notes a bar; each bar restarts the pattern; C' is an octave up). Pass: `188` C C' C' C C' C', `1881` C C' C' C C C', `r55` C G G C G G, `r55r` C G G C C G, `r585` C G C' G C G, `r5b75` C G B G C G, `r8b7` C C' B C' C C'. Hold C alone: `r5lo` C, then the G below, alternating; `pent` C Eb F G Bb C'. Hold C E G: `r535` C G E G C G, `dn` G E C G E C, `ud` C E G E C E, `pedl` C E C G C E, `rtone` only C, E and G, in a different order each bar. Hold C Eb G: `r535` uses Eb. Hold C alone: `r8r5` C C' C G C C', `maj` C D E G A C'.
+30. **LATCH holds.** LATCH `on`, PITCH `r5`, hold C and G, then release. Pass: the bass keeps playing C G with no key down, for at least a minute, with no stuck notes.
+31. **LATCH new chord.** While latched, play F and A together, then release. Pass: from the next cell the bass plays F C, the bar carries on (no restart), and C and G's notes are gone. Then play A alone: the bass moves to A.
+32. **LATCH off.** While latched with no key down, turn LATCH `off`. Pass: silence within a step, nothing hangs, and the next key starts a new phrase from PERM.
+33. **LATCH interruptions.** While latched: (a) stop and play, (b) switch track, (c) switch project. Pass: (a) plays on, (b) keeps playing on its own track until a new chord or LATCH `off` there, (c) silence at once.
 
 ## Extremes
 
-29. **Fastest.** About 200 BPM, RATE `1/32t`, CELLS `64321`, JUGGLE `rnd1`, SLIDE `100%`, hold two keys. Pass: steady notes, none dropped or stuck, clean stop on release.
-30. **Slowest.** About 40 BPM, RATE `1/2t`, GATE `100%`, hold two keys. Pass: notes change on time without hanging.
-31. **Saved project on a new build.** Reopen the project from check 15 on a later build. Pass: Bass Juggler and all eight values return.
-32. **Fresh start.** Release all keys, then press one. Pass: the first note comes at once, and the tick starts at the left end.
+34. **Fastest.** About 200 BPM, RATE `1/32t`, CELLS `64321`, JUGGLE `rnd1`, SLIDE `100%`, hold two keys. Pass: steady notes, none dropped or stuck, clean stop on release.
+35. **Slowest.** About 40 BPM, RATE `1/2t`, GATE `100%`, hold two keys. Pass: notes change on time without hanging.
+36. **Saved project on a new build.** Reopen the project from check 15 on a later build. Pass: Bass Juggler and all eight values return.
+37. **Fresh start.** Release all keys, then press one. Pass: the first note comes at once, and the tick starts at the left end.
 
 ## Results
 

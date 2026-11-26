@@ -19,6 +19,8 @@ Bass Juggler (`bass_juggler`) is a monophonic bassline from permuted rhythmic ce
 - **PERM clamps** to the set's count, but the control keeps its value. Turning PERM or CELLS sends the next bar home.
 - **CIRC** rotates the playing order left by one and looks the result up in the table, so the screen can show its index.
 - **SLIDE** needs two held keys: the overlapping note must sound on another key's record, because a Replace on the old one ends it. A tie into the same pitch does not overlap.
+- **LATCH** (page 2, encoder 2, replacing OCTAVE; the bass is fixed an octave down) is an experiment: release() returns true to keep a latched key's record, which the SDK promises only for keys that sound nothing. A new gesture (a key with none down) ends the old roots with empty Replaces (`drops`). At most seven keys stay latched, so stock always has a record free. Its device result decides whether it stays.
+- **PITCH** fixed patterns live in `kSequences`; add new ones there, before `ChordTones`.
 - **`kPitchResetEachBar`** is a constant (true), read only in `read_params` so it can become a control.
 - **The screen** uses all 24 dots: 16 cell starts (disc and divider, one white path each) and the Euclidean playhead (4 ticks, 4 covers). Bound dots must be single paths with one paint, so accents and slides are not drawn.
 - **Header values** are short lowercase words; the text line is `<order>/<count> <juggle>`.

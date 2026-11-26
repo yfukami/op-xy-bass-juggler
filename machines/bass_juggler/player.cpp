@@ -35,14 +35,21 @@ const u32 kDefaultChordWindow = 7;           // player steps, about 15 ms at 120
 const u32 kRates = 9;
 const u32 kCellSets = kCellSetCount;
 const u32 kPerms = 120;  // PERM's choices: the largest set's permutation count
-const u32 kPitches = 7;
+const u32 kPitches = 23;
 const u32 kJuggles = 10;
-const u32 kOctaves = 4;
+const u32 kLatches = 2;
 const u32 kGates = 19;
 const u32 kSlides = 21;
 
-// PITCH: the bass patterns, each moving on one entry per cell.
-enum Pattern { Root, Octave, RootFifth, RootFifthOctave, RootFifthSeventh, ChordTones, Walk };
+// PITCH: the bass patterns, each moving on one entry per cell. All but the
+// patterns before ChordTones are fixed sequences (kSequences); the rest use the held notes.
+enum Pattern {
+    Root, Octave, RootOctaveOctave, RootOctaveOctaveRoot, RootOctaveSeventh, RootOctaveRootFifth, RootFifth,
+    RootLowFifth, RootFifthFifth, RootFifthFifthRoot, RootFifthOctave, RootFifthOctaveFifth, RootFifthSeventh,
+    RootFifthSeventhFifth, RootFifthThirdFifth, Pentatonic, MajorPentatonic,
+    ChordTones, ChordDown, ChordUpDown, Pedal, RandomTone, Walk
+};
+const u32 kSequenceCount = ChordTones;
 // Whether each bar starts its pattern again from the root. false lets the
 // pattern run on across bars, so a pattern whose length differs from the bar's
 // cell count drifts across the rhythm (Schillinger's interference). A constant
@@ -51,6 +58,37 @@ const bool kPitchResetEachBar = true;
 const i32 kFifth = 7;
 const i32 kOctave = 12;
 const i32 kDefaultSeventh = 10;  // a minor seventh when no 7th is held
+const i32 kDefaultThird = 4;     // a major third when no 3rd is held
+const i32 kBassOctave = -1;      // the bassline sits an octave below the keys
+
+// The fixed patterns, in semitones from the root; the two entries below stand
+// for the 7th and the 3rd, held or default.
+const u32 kMaxSequence = 6;
+const signed char kSeventhEntry = 100;
+const signed char kThirdEntry = 101;
+struct Sequence {
+    u8 length;
+    signed char steps[kMaxSequence];
+};
+const Sequence kSequences[kSequenceCount] = {
+    {1, {0}},                         // root
+    {2, {0, 12}},                     // oct
+    {3, {0, 12, 12}},                 // 188
+    {4, {0, 12, 12, 0}},              // 1881
+    {4, {0, 12, kSeventhEntry, 12}},  // r8b7
+    {4, {0, 12, 0, 7}},               // r8r5
+    {2, {0, 7}},                      // r5
+    {2, {0, -5}},                     // r5lo: the fifth below
+    {3, {0, 7, 7}},                   // r55
+    {4, {0, 7, 7, 0}},                // r55r
+    {3, {0, 7, 12}},                  // r58
+    {4, {0, 7, 12, 7}},               // r585
+    {4, {0, 7, kSeventhEntry, 12}},   // r5b7
+    {4, {0, 7, kSeventhEntry, 7}},    // r5b75
+    {4, {0, 7, kThirdEntry, 7}},      // r535
+    {6, {0, 3, 5, 7, 10, 12}},        // pent: minor pentatonic
+    {6, {0, 2, 4, 7, 9, 12}},         // maj: major pentatonic
+};
 
 // Accents: the bar's first cell and every long cell play louder.
 const u8 kAccentVelocity = 120;
@@ -90,6 +128,7 @@ struct Tones {
     i32 offsets[kSlots];
     u32 count;
     i32 seventh;  // the held 7th (10 or 11 above the root, within its octave), else kDefaultSeventh
+    i32 third;    // the held 3rd (3 or 4), else kDefaultThird
 };
 
 struct State {
@@ -107,12 +146,16 @@ struct State {
     u32 step, tick, gate_left, rearm, start_wait;
     u8 active, sounding, off_mask, on_mask;
     u8 started, event_pending, draining, drain_calls;
+    u8 down;        // keys physically held (active also holds latched keys)
+    u8 drops[kSlots];  // roots of latched keys let go, whose records update() ends
+    u8 drop_count;
+    u8 latch;       // LATCH as the last drain read it (release() gets no controls)
     u8 waiting, carrier;  // carrier: the slot sounding the note, plus one
 };
 
 struct Params {
     u32 rate, cells, perm, pitch, juggle, gate, slide;
-    i32 octave;
+    bool latch;
     bool reset_each_bar;
 };
 
@@ -132,7 +175,7 @@ inline Params read_params(const Controls& c) {
     p.perm = choice(c.value[2], kPerms);
     p.pitch = choice(c.value[3], kPitches);
     p.juggle = choice(c.value[4], kJuggles);
-    p.octave = static_cast<i32>(choice(c.value[5], kOctaves)) - 2;
+    p.latch = choice(c.value[5], kLatches) == 1;
     p.gate = 10 + 5 * choice(c.value[6], kGates);
     p.slide = 5 * choice(c.value[7], kSlides);
     p.reset_each_bar = kPitchResetEachBar;
@@ -157,7 +200,8 @@ inline Tones read_tones(const State& s, u32 root_slot) {
     Tones t;
     t.count = 0;
     t.seventh = kDefaultSeventh;
-    bool found_seventh = false;
+    t.third = kDefaultThird;
+    bool found_seventh = false, found_third = false;
     const i32 root = s.slots[root_slot].root;
     for (u32 i = 0; i < kSlots; ++i) {
         if (!(s.active >> i & 1)) continue;
@@ -173,6 +217,13 @@ inline Tones read_tones(const State& s, u32 root_slot) {
             found_seventh = true;
         }
     }
+    for (u32 i = 0; i < t.count && !found_third; ++i) {
+        const i32 interval = static_cast<i32>(modulo(static_cast<u32>(t.offsets[i]), 12));
+        if (interval == 3 || interval == 4) {
+            t.third = interval;
+            found_third = true;
+        }
+    }
     return t;
 }
 
@@ -184,32 +235,23 @@ inline i32 climb(const Tones& t, u32 at) {
 }
 
 inline u32 pattern_length(u32 pattern, const Tones& t) {
-    switch (pattern) {
-    case Octave:
-    case RootFifth: return 2;
-    case RootFifthOctave: return 3;
-    case RootFifthSeventh: return 4;
-    case ChordTones:
-    case Walk: return climb_length(t);
-    default: return 1;
-    }
+    if (pattern < kSequenceCount) return kSequences[pattern].length;
+    const u32 n = climb_length(t);
+    if (pattern == ChordUpDown) return n > 2 ? 2 * n - 2 : n;  // the ends once: C E G E
+    if (pattern == Pedal) return 2 * (n - 1);                  // the root between each other note
+    return n;
 }
 
 // The pattern's offset from the root at position `pos` (any count; it wraps).
 inline i32 pattern_offset(u32 pattern, const Tones& t, u32 pos) {
     const u32 at = modulo(pos, pattern_length(pattern, t));
-    switch (pattern) {
-    case Octave: return at ? kOctave : 0;
-    case RootFifth: return at ? kFifth : 0;
-    case RootFifthOctave: return at == 2 ? kOctave : at ? kFifth : 0;
-    case RootFifthSeventh: {
-        const i32 steps[4] = {0, kFifth, t.seventh, kOctave};
-        return steps[at];
-    }
-    case ChordTones:
-    case Walk: return climb(t, at);
-    default: return 0;
-    }
+    const u32 n = climb_length(t);
+    if (pattern == ChordDown) return climb(t, n - 1 - at);
+    if (pattern == ChordUpDown) return climb(t, at < n ? at : 2 * n - 2 - at);
+    if (pattern == Pedal) return at & 1 ? climb(t, 1 + (at >> 1)) : 0;
+    if (pattern >= kSequenceCount) return climb(t, at);
+    const signed char step = kSequences[pattern].steps[at];
+    return step == kSeventhEntry ? t.seventh : step == kThirdEntry ? t.third : step;
 }
 
 // A cell's offset. WALK's last cell of the bar is instead an approach note a
@@ -363,8 +405,11 @@ inline void trigger(State& s, const Params& p, u32 cell) {
         return;
     }
     const Tones tones = read_tones(s, root_slot);
-    const i32 offset = cell_offset(p.pitch, tones, pos, cell + 1 == s.bar.count, p.reset_each_bar);
-    const u32 pitch = fold(static_cast<i32>(s.slots[root_slot].root) + offset + 12 * p.octave);
+    // RTONE: any of the held notes (or root, fifth, octave), at random.
+    const i32 offset = p.pitch == RandomTone
+                           ? climb(tones, ((next_random(s) >> 16) * climb_length(tones)) >> 16)
+                           : cell_offset(p.pitch, tones, pos, cell + 1 == s.bar.count, p.reset_each_bar);
+    const u32 pitch = fold(static_cast<i32>(s.slots[root_slot].root) + offset + 12 * kBassOctave);
     u32 slot = root_slot;
     u8 keep = 0;
     const u32 old = s.carrier ? s.carrier - 1u : kSlots;
@@ -468,12 +513,41 @@ inline void park(Tone& tone, u32 root) {
     tone.delay = kParkedDelay;
 }
 
-bool press(State& s, const Controls&, u32 note, u32 velocity, Plan& plan) {
+// Stops using keys: they leave the chord and nothing more is sent to them.
+inline void forget(State& s, u8 mask) {
+    const u8 keep = static_cast<u8>(~mask);
+    s.active &= keep;
+    s.down &= keep;
+    s.sounding &= keep;
+    s.off_mask &= keep;
+    s.on_mask &= keep;
+    if (s.carrier && (mask >> (s.carrier - 1) & 1)) {
+        s.carrier = 0;
+        s.gate_left = 0;
+        s.tie_next = 0;
+    }
+    if (s.tail && (mask >> (s.tail - 1) & 1)) s.tail = 0;
+    if (!s.active) s.gate_left = 0;
+}
+
+// Lets go of latched keys: forgets them now and queues their roots, whose
+// records update() ends with an empty Replace (which stock releases for good).
+inline void let_go(State& s, u8 mask) {
+    for (u32 i = 0; i < kSlots; ++i)
+        if ((mask >> i & 1) && s.drop_count < kSlots) s.drops[s.drop_count++] = s.slots[i].root;
+    forget(s, mask);
+}
+
+bool press(State& s, const Controls& c, u32 note, u32 velocity, Plan& plan) {
     plan.count = 0;
     if (note > 127) return false;
     s.event_pending = 1;
+    s.latch = read_params(c).latch;
     const bool first = !s.active;
     u32 slot = find_slot(s, note);
+    // LATCH: the first key of a new gesture (no key down) replaces the latched
+    // chord; a latched key pressed again stays. The phrase goes on.
+    if (s.latch && !s.down) let_go(s, static_cast<u8>(s.active & ~(slot < kSlots ? 1u << slot : 0u)));
     if (slot == kSlots) {
         if (s.active == 0xff) return true;  // the SDK cannot hold a ninth root
         slot = lowest_bit(static_cast<u8>(~s.active));
@@ -484,6 +558,7 @@ bool press(State& s, const Controls&, u32 note, u32 velocity, Plan& plan) {
     key.velocity = static_cast<u8>(velocity < 1 ? 1 : velocity > 127 ? 127 : velocity);
     key.order = ++s.order_counter;
     s.active |= bit;
+    s.down |= bit;
     s.sounding &= static_cast<u8>(~bit);  // the plan replaces anything this root held
     if (s.carrier == slot + 1) s.carrier = 0;
     if (s.tail == slot + 1) s.tail = 0;
@@ -503,18 +578,12 @@ bool release(State& s, u32 note) {
     s.event_pending = 1;
     const u32 slot = find_slot(s, note);
     if (slot == kSlots) return true;  // a key press() could not hold
-    const u8 keep = static_cast<u8>(~(1u << slot));
-    s.active &= keep;
-    s.sounding &= keep;
-    s.off_mask &= keep;
-    s.on_mask &= keep;
-    if (s.carrier == slot + 1) {
-        s.carrier = 0;
-        s.gate_left = 0;
-        s.tie_next = 0;
-    }
-    if (s.tail == slot + 1) s.tail = 0;
-    if (!s.active) s.gate_left = 0;
+    s.down &= static_cast<u8>(~(1u << slot));
+    // LATCH keeps the key and its record, which goes on sounding the bass
+    // (an experiment: the SDK promises this only for keys that sound nothing).
+    // At most seven stay, so a new chord's first key always finds a free record.
+    if (s.latch && s.active != 0xff) return true;
+    forget(s, static_cast<u8>(1u << slot));
     return false;  // stock releases this root's notes
 }
 
@@ -522,8 +591,18 @@ bool update(State& s, const Controls& c, Update& change) {
     if (!s.draining) {
         s.draining = 1;
         s.drain_calls = 0;
+        s.latch = read_params(c).latch;
+        // LATCH turned off: latched keys no longer down stop.
+        if (!s.latch && (s.active & ~s.down)) let_go(s, static_cast<u8>(s.active & ~s.down));
         if (s.event_pending) s.event_pending = 0;
         else clock_step(s, c);
+    }
+    if (s.drop_count) {
+        change.mode = opxy::player::Replace;
+        change.root = s.drops[--s.drop_count];
+        change.plan.count = 0;  // ends the record for good
+        if (++s.drain_calls >= kDrainLimit) s.draining = 0;
+        return true;
     }
     if (!s.off_mask && !s.on_mask) {
         s.draining = 0;
@@ -583,10 +662,11 @@ inline void show_number(char* out, u32 value, const char* suffix) {
 void display(const State& s, const Controls& c, Display& d) {
     static const char rates[kRates][6] = {"1/2t", "1/4", "1/4t", "1/8", "1/8t", "1/16", "1/16t", "1/32", "1/32t"};
     static const char cells[kCellSets][6] = {"4444", "5533", "tres", "7cel", "44332", "5432", "43322", "64321"};
-    static const char pitches[kPitches][5] = {"root", "oct", "r5", "r58", "r5b7", "chrd", "walk"};
+    static const char pitches[kPitches][6] = {"root", "oct",  "188",  "1881", "r8b7", "r8r5",  "r5",   "r5lo",
+                                              "r55",  "r55r", "r58",  "r585", "r5b7", "r5b75", "r535", "pent",
+                                              "maj",  "chrd", "dn",   "ud",   "pedl", "rtone", "walk"};
     static const char juggles[kJuggles][6] = {"hold", "circ1", "circ2", "circ4", "gen1",
                                               "gen2", "gen4", "rnd1", "rnd2", "rnd4"};
-    static const char octaves[kOctaves][3] = {"-2", "-1", "0", "+1"};
     const Params p = read_params(c);
     u32 at = 0;
     append(d.values[0], sizeof d.values[0], at, rates[opxy::player::choice(c.value[0], kRates)]);
@@ -598,7 +678,7 @@ void display(const State& s, const Controls& c, Display& d) {
     at = 0;
     append(d.values[4], sizeof d.values[4], at, juggles[p.juggle]);
     at = 0;
-    append(d.values[5], sizeof d.values[5], at, octaves[p.octave + 2]);
+    append(d.values[5], sizeof d.values[5], at, p.latch ? "on" : "off");
     show_number(d.values[6], p.gate, "%");
     show_number(d.values[7], p.slide, "%");
 

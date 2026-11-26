@@ -4,7 +4,7 @@ An Open-XY note player for the OP-XY (OS 1.2.1). It turns held keys into a monop
 
 ## How it plays
 
-- **One note at a time.** The lowest held key is the root, and the other held keys supply chord tones. When keys change in the middle of a bar, the new root takes over from the next cell.
+- **One note at a time,** an octave below the keys. The lowest held key is the root, and the other held keys supply chord tones. When keys change in the middle of a bar, the new root takes over from the next cell.
 - **A bar is 16 RATE steps,** counted from the first key you press: the player has no bar position from the OP-XY. Releasing every key ends the phrase, and the next key starts a new bar.
 - **Cells:** a cell of N steps plays one note on its first step and rests for the rest. GATE sets how long that note is held.
 - **Accents:** the bar's first cell and every cell of 4 steps or more play at velocity 120, and the others at 90.
@@ -17,15 +17,15 @@ Press any encoder to switch pages.
 | Encoder | Page 1 | Page 2 |
 |---|---|---|
 | 1 | RATE: 1/2t, 1/4, 1/4t, 1/8, 1/8t, 1/16, 1/16t, 1/32, 1/32t | JUGGLE: hold, circ1/2/4, gen1/2/4, rnd1/2/4 |
-| 2 | CELLS: 8 cell sets (see Cell sets) | OCTAVE: -2, -1, 0, +1 |
+| 2 | CELLS: 8 cell sets (see Cell sets) | LATCH: off, on (experimental) |
 | 3 | PERM: the cell order, 1 to the set's count | GATE: 10% to 100% of the cell |
-| 4 | PITCH: root, oct, r5, r58, r5b7, chrd, walk | SLIDE: 0% to 100% |
+| 4 | PITCH: 23 patterns, from root to walk (see PITCH) | SLIDE: 0% to 100% |
 
-Defaults: 1/16, tres, 1, root, hold, -1, 60%, 0%.
+Defaults: 1/16, tres, 1, root, hold, off, 60%, 0%.
 
 - **PERM** runs from 1 to 120, but stops at the current set's count. Turning past it has no effect, and the stored value returns when a larger set is chosen again.
 - **GATE** is a share of the cell, not of the step: a 4-step cell at 50% holds for 2 steps.
-- **OCTAVE** moves the whole bassline from the held root. Notes outside MIDI's range fold back by octaves.
+- Notes outside MIDI's range fold back by octaves.
 
 ## Cell sets
 
@@ -52,13 +52,29 @@ The pattern moves on one entry per cell and, by default, starts again at the roo
 |---|---|
 | `root` | root on every cell |
 | `oct` | root, octave |
+| `188` | root, octave, octave |
+| `1881` | root, octave, octave, root |
+| `r8b7` | root, octave, seventh, octave, with the same seventh as `r5b7` |
+| `r8r5` | root, octave, root, fifth (disco and funk) |
 | `r5` | root, fifth |
+| `r5lo` | root, the fifth below (country two-beat) |
+| `r55` | root, fifth, fifth |
+| `r55r` | root, fifth, fifth, root |
 | `r58` | root, fifth, octave |
+| `r585` | root, fifth, octave, fifth |
 | `r5b7` | root, fifth, seventh, octave. The seventh is a held 7th (10 or 11 semitones, in any octave), otherwise a minor 7th |
+| `r5b75` | root, fifth, seventh, fifth, with the same seventh |
+| `r535` | root, fifth, third, fifth. The third is a held b3 or 3, otherwise a major 3rd |
+| `pent` | the minor pentatonic upward: root, b3, 4, 5, b7, octave |
 | `chrd` | the held notes, low to high |
+| `maj` | the major pentatonic upward: root, 2, 3, 5, 6, octave |
+| `dn` | the held notes, high to low |
+| `ud` | the held notes up, then down, without repeating the ends (C E G E) |
+| `pedl` | the root between each other held note in turn (C E C G) |
+| `rtone` | a held note at random on each cell |
 | `walk` | like `chrd`, but the bar's last cell plays a semitone below the next bar's first note |
 
-With one key held, `chrd` and `walk` climb root, fifth, octave.
+The patterns from `chrd` on use the held notes. With one key held, they use root, fifth and octave instead.
 
 ## JUGGLE
 
@@ -70,6 +86,14 @@ The number is how many bars pass between changes.
 - **rnd:** any other order, at random.
 
 PERM is the home position. Turning PERM or CELLS jumps there at the next bar line, and juggling continues from it. A new phrase (all keys released, then a key pressed) also starts from PERM. The screen shows the order that is playing.
+
+## LATCH (experimental)
+
+With LATCH on, the bass keeps playing after you let go of the keys. The first key of a new chord, played after every key is up, replaces the latched chord from the next cell; the bar and JUGGLE carry on. A latched key pressed again in a new chord stays. Turning LATCH off stops the keys that are no longer down.
+
+At most seven keys stay latched, so the OP-XY always has room for the next chord's first key: when all eight are held, the first one released is let go as usual.
+
+This relies on the OP-XY keeping a key's notes after the player declines to release it, which the SDK does not promise. It is being tried on the device.
 
 ## SLIDE
 
