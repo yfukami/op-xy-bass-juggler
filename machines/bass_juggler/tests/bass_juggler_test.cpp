@@ -216,8 +216,12 @@ static void pattern_steps() {
     require(run(Octave, chord, 4) == Offsets({0, 12, 0, 12}));
     require(run(RootFifth, chord, 4) == Offsets({0, 7, 0, 7}));
     require(run(RootFifthOctave, chord, 6) == Offsets({0, 7, 12, 0, 7, 12}));
-    require(run(RootFifthSeventh, chord, 5) == Offsets({0, 7, 11, 12, 0}));  // the held B
-    require(run(RootFifthSeventh, one, 5) == Offsets({0, 7, 10, 12, 0}));    // no 7th held: +10
+    require(run(RootFifthSeventhOctave, chord, 5) == Offsets({0, 7, 11, 12, 0}));  // the held B
+    require(run(RootFifthSeventhOctave, one, 5) == Offsets({0, 7, 10, 12, 0}));    // no 7th held: +10
+    require(run(RootFifthSeventh, chord, 4) == Offsets({0, 7, 11, 0}));       // three entries, the held B
+    require(run(RootFifthSeventh, one, 4) == Offsets({0, 7, 10, 0}));
+    require(run(RootOctaveSeventh, chord, 4) == Offsets({0, 12, 11, 0}));
+    require(run(RootOctaveSeventh, one, 4) == Offsets({0, 12, 10, 0}));
     require(run(ChordTones, chord, 6) == Offsets({0, 4, 7, 11, 0, 4}));
     require(run(ChordTones, one, 3) == Offsets({0, 7, 12}));  // one key climbs root, fifth, octave
     require(run(Walk, chord, 5) == Offsets({0, 4, 7, 11, 0}));
@@ -228,8 +232,8 @@ static void pattern_steps() {
     require(run(RootFifthOctaveFifth, chord, 5) == Offsets({0, 7, 12, 7, 0}));
     require(run(RootFifthSeventhFifth, chord, 5) == Offsets({0, 7, 11, 7, 0}));  // the held B
     require(run(RootFifthSeventhFifth, one, 4) == Offsets({0, 7, 10, 7}));
-    require(run(RootOctaveSeventh, chord, 5) == Offsets({0, 12, 11, 12, 0}));
-    require(run(RootOctaveSeventh, one, 4) == Offsets({0, 12, 10, 12}));
+    require(run(RootOctaveSeventhOctave, chord, 5) == Offsets({0, 12, 11, 12, 0}));
+    require(run(RootOctaveSeventhOctave, one, 4) == Offsets({0, 12, 10, 12}));
     require(run(RootLowFifth, chord, 3) == Offsets({0, -5, 0}));
     require(run(RootFifthThirdFifth, chord, 4) == Offsets({0, 7, 4, 7}));      // the held E
     require(run(RootFifthThirdFifth, tones_of({48, 51}), 4) == Offsets({0, 7, 3, 7}));  // a held Eb
@@ -269,15 +273,15 @@ static void walk_approach() {
 }
 
 static void interference() {
-    // R5b7 (four entries) over TRES (six cells): with the pattern running on, the
+    // R5b78 (four entries) over TRES (six cells): with the pattern running on, the
     // second bar starts on its third entry; with it reset, every bar is the same.
     const machine::Tones one = tones_of({48});
     Offsets on, reset;
     u32 pos = 0;
     for (u32 bar = 0; bar < 2; ++bar)
         for (u32 cell = 0; cell < 6; ++cell) {
-            on.push_back(machine::cell_offset(machine::RootFifthSeventh, one, pos++, cell == 5, false));
-            reset.push_back(machine::cell_offset(machine::RootFifthSeventh, one, cell, cell == 5, true));
+            on.push_back(machine::cell_offset(machine::RootFifthSeventhOctave, one, pos++, cell == 5, false));
+            reset.push_back(machine::cell_offset(machine::RootFifthSeventhOctave, one, cell, cell == 5, true));
         }
     require(on == Offsets({0, 7, 10, 12, 0, 7, 10, 12, 0, 7, 10, 12}));
     require(reset == Offsets({0, 7, 10, 12, 0, 7, 0, 7, 10, 12, 0, 7}));
@@ -297,8 +301,10 @@ static void plays_the_patterns() {
     using namespace machine;
     // TRES: six cells a bar, each bar starting the pattern again.
     // An octave below the keys.
-    require(bar_pitches(RootFifthSeventh, {48, 52, 55, 59}, 2) == Notes({36, 43, 47, 48, 36, 43, 36, 43, 47, 48, 36, 43}));
-    require(bar_pitches(RootFifthSeventh, {48}, 1) == Notes({36, 43, 46, 48, 36, 43}));
+    require(bar_pitches(RootFifthSeventhOctave, {48, 52, 55, 59}, 2) == Notes({36, 43, 47, 48, 36, 43, 36, 43, 47, 48, 36, 43}));
+    require(bar_pitches(RootFifthSeventhOctave, {48}, 1) == Notes({36, 43, 46, 48, 36, 43}));
+    require(bar_pitches(RootFifthSeventh, {48, 59}, 1) == Notes({36, 43, 47, 36, 43, 47}));
+    require(bar_pitches(RootOctaveSeventh, {48, 59}, 1) == Notes({36, 48, 47, 36, 48, 47}));
     require(bar_pitches(ChordTones, {55, 52, 48}, 1) == Notes({36, 40, 43, 36, 40, 43}));
     require(bar_pitches(Walk, {48, 52, 55}, 2) == Notes({36, 40, 43, 36, 40, 35, 36, 40, 43, 36, 40, 35}));
     require(bar_pitches(Octave, {40}, 1) == Notes({28, 40, 28, 40, 28, 40}));

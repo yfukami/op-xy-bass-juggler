@@ -19,7 +19,7 @@ Press any encoder to switch pages.
 | 1 | RATE: 1/2t, 1/4, 1/4t, 1/8, 1/8t, 1/16, 1/16t, 1/32, 1/32t | JUGGLE: hold, circ1/2/4, gen1/2/4, rnd1/2/4 |
 | 2 | CELLS: 8 cell sets (see Cell sets) | LATCH: off, on (experimental) |
 | 3 | PERM: the cell order, 1 to the set's count | GATE: 10% to 100% of the cell |
-| 4 | PITCH: 23 patterns, from root to walk (see PITCH) | SLIDE: 0% to 100% |
+| 4 | PITCH: 25 patterns, from root to walk (see PITCH) | SLIDE: 0% to 100% |
 
 Defaults: 1/16, tres, 1, root, hold, off, 60%, 0%.
 
@@ -54,7 +54,8 @@ The pattern moves on one entry per cell and, by default, starts again at the roo
 | `oct` | root, octave |
 | `188` | root, octave, octave |
 | `1881` | root, octave, octave, root |
-| `r8b7` | root, octave, seventh, octave, with the same seventh as `r5b7` |
+| `r8b7` | root, octave, seventh, with the same seventh as `r5b7` |
+| `r8b78` | root, octave, seventh, octave, with the same seventh |
 | `r8r5` | root, octave, root, fifth (disco and funk) |
 | `r5` | root, fifth |
 | `r5lo` | root, the fifth below (country two-beat) |
@@ -62,12 +63,13 @@ The pattern moves on one entry per cell and, by default, starts again at the roo
 | `r55r` | root, fifth, fifth, root |
 | `r58` | root, fifth, octave |
 | `r585` | root, fifth, octave, fifth |
-| `r5b7` | root, fifth, seventh, octave. The seventh is a held 7th (10 or 11 semitones, in any octave), otherwise a minor 7th |
+| `r5b7` | root, fifth, seventh. The seventh is a held 7th (10 or 11 semitones, in any octave), otherwise a minor 7th |
+| `r5b78` | root, fifth, seventh, octave, with the same seventh |
 | `r5b75` | root, fifth, seventh, fifth, with the same seventh |
 | `r535` | root, fifth, third, fifth. The third is a held b3 or 3, otherwise a major 3rd |
 | `pent` | the minor pentatonic upward: root, b3, 4, 5, b7, octave |
-| `chrd` | the held notes, low to high |
 | `maj` | the major pentatonic upward: root, 2, 3, 5, 6, octave |
+| `chrd` | the held notes, low to high |
 | `dn` | the held notes, high to low |
 | `ud` | the held notes up, then down, without repeating the ends (C E G E) |
 | `pedl` | the root between each other held note in turn (C E C G) |

@@ -35,18 +35,19 @@ const u32 kDefaultChordWindow = 7;           // player steps, about 15 ms at 120
 const u32 kRates = 9;
 const u32 kCellSets = kCellSetCount;
 const u32 kPerms = 120;  // PERM's choices: the largest set's permutation count
-const u32 kPitches = 23;
+const u32 kPitches = 25;
 const u32 kJuggles = 10;
 const u32 kLatches = 2;
 const u32 kGates = 19;
 const u32 kSlides = 21;
 
-// PITCH: the bass patterns, each moving on one entry per cell. All but the
-// patterns before ChordTones are fixed sequences (kSequences); the rest use the held notes.
+// PITCH: the bass patterns, each moving on one entry per cell. The patterns
+// before ChordTones are fixed sequences (kSequences); the rest use the held notes.
 enum Pattern {
-    Root, Octave, RootOctaveOctave, RootOctaveOctaveRoot, RootOctaveSeventh, RootOctaveRootFifth, RootFifth,
-    RootLowFifth, RootFifthFifth, RootFifthFifthRoot, RootFifthOctave, RootFifthOctaveFifth, RootFifthSeventh,
-    RootFifthSeventhFifth, RootFifthThirdFifth, Pentatonic, MajorPentatonic,
+    Root, Octave, RootOctaveOctave, RootOctaveOctaveRoot, RootOctaveSeventh, RootOctaveSeventhOctave,
+    RootOctaveRootFifth, RootFifth, RootLowFifth, RootFifthFifth, RootFifthFifthRoot, RootFifthOctave,
+    RootFifthOctaveFifth, RootFifthSeventh, RootFifthSeventhOctave, RootFifthSeventhFifth,
+    RootFifthThirdFifth, Pentatonic, MajorPentatonic,
     ChordTones, ChordDown, ChordUpDown, Pedal, RandomTone, Walk
 };
 const u32 kSequenceCount = ChordTones;
@@ -75,7 +76,8 @@ const Sequence kSequences[kSequenceCount] = {
     {2, {0, 12}},                     // oct
     {3, {0, 12, 12}},                 // 188
     {4, {0, 12, 12, 0}},              // 1881
-    {4, {0, 12, kSeventhEntry, 12}},  // r8b7
+    {3, {0, 12, kSeventhEntry}},      // r8b7
+    {4, {0, 12, kSeventhEntry, 12}},  // r8b78
     {4, {0, 12, 0, 7}},               // r8r5
     {2, {0, 7}},                      // r5
     {2, {0, -5}},                     // r5lo: the fifth below
@@ -83,7 +85,8 @@ const Sequence kSequences[kSequenceCount] = {
     {4, {0, 7, 7, 0}},                // r55r
     {3, {0, 7, 12}},                  // r58
     {4, {0, 7, 12, 7}},               // r585
-    {4, {0, 7, kSeventhEntry, 12}},   // r5b7
+    {3, {0, 7, kSeventhEntry}},       // r5b7
+    {4, {0, 7, kSeventhEntry, 12}},   // r5b78
     {4, {0, 7, kSeventhEntry, 7}},    // r5b75
     {4, {0, 7, kThirdEntry, 7}},      // r535
     {6, {0, 3, 5, 7, 10, 12}},        // pent: minor pentatonic
@@ -656,15 +659,16 @@ inline void show_number(char* out, u32 value, const char* suffix) {
     append(out, 8, at, suffix);
 }
 
-// The header: page 1 RATE, CELLS, PERM, PITCH; page 2 JUGGLE, OCTAVE, GATE,
+// The header: page 1 RATE, CELLS, PERM, PITCH; page 2 JUGGLE, LATCH, GATE,
 // SLIDE. Short lowercase words, which fit the header's columns (see CLAUDE.md).
 // PERM shows the order it names in the current set (clamped), counted from 1.
 void display(const State& s, const Controls& c, Display& d) {
     static const char rates[kRates][6] = {"1/2t", "1/4", "1/4t", "1/8", "1/8t", "1/16", "1/16t", "1/32", "1/32t"};
     static const char cells[kCellSets][6] = {"4444", "5533", "tres", "7cel", "44332", "5432", "43322", "64321"};
-    static const char pitches[kPitches][6] = {"root", "oct",  "188",  "1881", "r8b7", "r8r5",  "r5",   "r5lo",
-                                              "r55",  "r55r", "r58",  "r585", "r5b7", "r5b75", "r535", "pent",
-                                              "maj",  "chrd", "dn",   "ud",   "pedl", "rtone", "walk"};
+    static const char pitches[kPitches][6] = {"root", "oct",  "188",  "1881", "r8b7", "r8b78", "r8r5",  "r5",
+                                              "r5lo", "r55",  "r55r", "r58",  "r585", "r5b7",  "r5b78", "r5b75",
+                                              "r535", "pent", "maj",  "chrd", "dn",   "ud",    "pedl",  "rtone",
+                                              "walk"};
     static const char juggles[kJuggles][6] = {"hold", "circ1", "circ2", "circ4", "gen1",
                                               "gen2", "gen4", "rnd1", "rnd2", "rnd4"};
     const Params p = read_params(c);

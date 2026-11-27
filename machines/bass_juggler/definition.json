@@ -179,7 +179,7 @@
     {
       "id": "pitch",
       "label": "PITCH",
-      "default": 0.021739,
+      "default": 0.02,
       "mapping": {
         "kind": "enum",
         "labels": [
@@ -188,6 +188,7 @@
           "188",
           "1881",
           "R8B7",
+          "R8B78",
           "R8R5",
           "R5",
           "R5LO",
@@ -196,6 +197,7 @@
           "R58",
           "R585",
           "R5B7",
+          "R5B78",
           "R5B75",
           "R535",
           "PENT",
